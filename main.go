@@ -49,7 +49,9 @@ func loginHandler(rw http.ResponseWriter, r *http.Request) {
 	}
 	config, err := google.ConfigFromJSON(b, "https://www.googleapis.com/auth/spreadsheets.readonly")
 	if err != nil {
-		log.Fatalf("Unable to parse client secret file to config: %v", err)
+		rw.WriteHeader(400)
+		rw.Write([]byte(fmt.Sprintf("Unable to parse client secret file to config: %v", err)))
+		return
 	}
 	authURL := config.AuthCodeURL("state-token", oauth2.AccessTypeOffline)
 	http.Redirect(rw, r, authURL, 301)
