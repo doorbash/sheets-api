@@ -186,11 +186,11 @@ func sheetHandler(rw http.ResponseWriter, r *http.Request) {
 				rw.Write([]byte(fmt.Sprintf("%v", s[query["key"][0]])))
 			} else {
 				rw.WriteHeader(400)
-				rw.Write([]byte(fmt.Sprintf("Error: %s is not specified in sheet.", query["key"][0])))
+				rw.Write([]byte(fmt.Sprintf("Error: key %s is not in sheet.", query["key"][0])))
 			}
 		} else {
 			rw.WriteHeader(400)
-			rw.Write([]byte("Error: key= is not in url."))
+			rw.Write([]byte("Error: key param is not in url."))
 		}
 	}
 
