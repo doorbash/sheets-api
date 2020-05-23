@@ -26,7 +26,19 @@ Put your data in two columns like this: (A=key B=value).
 http://YOUR-SERVER-DOMAIN-NAME:4040/SheetName/get
 
 
-{"key1":"value1","key10":"t","key11":true,"key2":3.14,"key3":4,"key4":true,"key5":0,"key6":1,"key7":"","key8":null,"key9":"\"true\""}
+{
+   "key1":"value1",
+   "key10":"t",
+   "key11":true,
+   "key2":3.14,
+   "key3":4,
+   "key4":true,
+   "key5":0,
+   "key6":1,
+   "key7":"",
+   "key8":null,
+   "key9":"\"true\""
+}
 ```
 
 ### Get a specific key
@@ -77,6 +89,7 @@ private class GetConfigAsyncTask extends AsyncTask<String, Integer, String> {
         }
     }
 }
+```
 
 ```java
 new GetConfigAsyncTask().execute("http://YOUR-SERVER-DOMAIN-NAME:4040/SheetName/get");
