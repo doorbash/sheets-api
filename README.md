@@ -11,7 +11,7 @@ A simple API that reads key value config data from Google Sheets
 5. `go get github.com/doorbash/remote-config`
 6. Edit `main.go` and set `SPREADSHEET` const as your spreadsheet id.
 7. `go build`
-8. Put `credentials.json` file next to `main.go`.
+8. Put `credentials.json` next to `main.go`.
 9. `./remote-config`
 10. Visit `http://example.com:4040/login` and login with your Google account.
 
