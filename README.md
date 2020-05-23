@@ -12,7 +12,7 @@ A simple API that reads key value config data from Google Sheets
 6. `go get github.com/doorbash/remote-config`
 7. `go build`
 8. `./remote-config`
-9. Visit `http://YOUR-SERVER-DOMAIN-NAME:4040/login` url and login with your Google account.
+9. Visit `http://YOUR-SERVER-DOMAIN-NAME:4040/login` and login with your Google account.
 
 ## Usage:
 
@@ -22,23 +22,23 @@ Put your data in two columns like this: (A=key B=value).
 
 ### Get all configs as JSON
 
-http://YOUR-SERVER-DOMAIN-NAME:4040/SheetName/get
+`http://YOUR-SERVER-DOMAIN-NAME:4040/SheetName/get`
 
 
 `{"key1":"value1","key10":"t","key11":true,"key2":3.14,"key3":4,"key4":true,"key5":0,"key6":1,"key7":"","key8":null,"key9":"\"true\""}`
 
 ### Get a specific key
 
-http://YOUR-SERVER-DOMAIN-NAME:4040/SheetName/get?key=key4
+`http://YOUR-SERVER-DOMAIN-NAME:4040/SheetName/get?key=key4`
     
 `true`
 
 ## Example:
 
-### Java:
+### Android:
 
 ```java
-private class GetConfig extends AsyncTask<String, Integer, String> {
+private class GetConfigAsyncTask extends AsyncTask<String, Integer, String> {
     protected String doInBackground(String... urls) {
         try {
             Log.d(TAG, "sending get request to server...");
@@ -49,8 +49,9 @@ private class GetConfig extends AsyncTask<String, Integer, String> {
             connection.setReadTimeout(10000);
             connection.connect();
             int status = connection.getResponseCode();
-            if (status != HttpURLConnection.HTTP_OK) {
-                InputStream is = connection.getErrorStream();
+            Log.d(TAG, "status code is " + status);
+            if (status == HttpURLConnection.HTTP_OK) {
+                InputStream is = connection.getInputStream();
                 return new BufferedReader(new InputStreamReader(is)).readLine();
             } else {
                 InputStream is = connection.getErrorStream();
@@ -72,7 +73,9 @@ private class GetConfig extends AsyncTask<String, Integer, String> {
         }
     }
 }
-```
+```java
+new GetConfigAsyncTask().execute("http://YOUR-SERVER-DOMAIN-NAME:4040/SheetName/get");
+``
 
 ## License
 
