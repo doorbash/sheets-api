@@ -4,7 +4,7 @@ A simple API that reads key value config data from Google Sheets
 ## Install:
 
 1. Create a new Google project. 
-2. Enable `Google Sheets API`.
+2. Enable Google Sheets API for you project.
 3. Add credentials to your project.
     You need to add an authorized redirect URI like `http://YOUR-SERVER-DOMAIN-NAME:4040/callback`.
 4. Download credentials file and save it as `credentials.json` in project root directory.
@@ -23,7 +23,7 @@ Put your data in two columns like this: (A=key B=value).
 ### Get all configs as JSON
 
 ```
-http://YOUR-SERVER-DOMAIN-NAME:4040/SheetName/get
+http://YOUR-SERVER-DOMAIN-NAME:4040/Sheet1/get
 
 
 {
@@ -44,7 +44,7 @@ http://YOUR-SERVER-DOMAIN-NAME:4040/SheetName/get
 ### Get a specific key
 
 ```
-http://YOUR-SERVER-DOMAIN-NAME:4040/SheetName/get?key=key4
+http://YOUR-SERVER-DOMAIN-NAME:4040/Sheet1/get?key=key4
     
 true
 ```
@@ -92,7 +92,7 @@ private class GetConfigAsyncTask extends AsyncTask<String, Integer, String> {
 ```
 
 ```java
-new GetConfigAsyncTask().execute("http://YOUR-SERVER-DOMAIN-NAME:4040/SheetName/get");
+new GetConfigAsyncTask().execute("http://YOUR-SERVER-DOMAIN-NAME:4040/Sheet1/get");
 ```
 
 ## License
