@@ -1,0 +1,4 @@
+*.exe
+.vscode/settings.json
+credentials.json
+token.json
