@@ -16,7 +16,7 @@ A simple API that reads key value config data from Google Sheets
 
 ## Usage:
 
-Put your data in two columns: (A=key B=value).
+Put your data in two columns: (A=key B=value)
 
 <img src="https://github.com/doorbash/remote-config/blob/master/screenshot.png?raw=true" />
 
