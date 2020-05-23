@@ -3,12 +3,12 @@ A simple API that reads key value config data from Google Sheets
 
 ## Install:
 
-1. Create a new Google project. 
+1. Create a new Google project. https://console.developers.google.com
 2. Enable Google Sheets API for you project.
 3. Add credentials to your project.
     You need to add an authorized redirect URI like `http://example.com:4040/callback`.
 4. Download credentials file and save it as `credentials.json` in project root directory.
-5. Set `SPREADSHEET` const in main.go as your spreadsheet id.
+5. Set `SPREADSHEET` const in `main.go` as your spreadsheet id.
 6. `go get github.com/doorbash/remote-config`
 7. `go build`
 8. `./remote-config`
