@@ -133,6 +133,10 @@ func sheetHandler(rw http.ResponseWriter, r *http.Request) {
 	for _, row := range resp.Values {
 		// fmt.Printf("%s --> ", row[0])
 
+		if len(row) == 0 {
+			continue
+		}
+
 		var key string = row[0].(string)
 		var value string = ""
 
