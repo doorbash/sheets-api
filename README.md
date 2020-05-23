@@ -1,5 +1,5 @@
 # remote-config
-A simple API that reads key value config from Google Sheets
+A simple API that reads key value config from Google Sheets.
 
 ## Install:
 
@@ -17,7 +17,7 @@ A simple API that reads key value config from Google Sheets
 
 ## Usage:
 
-Put your data in two columns: (A=key B=value)
+Put your data in two columns: (A=key, B=value)
 
 <img src="https://github.com/doorbash/remote-config/blob/master/screenshot.png?raw=true" />
 
@@ -25,7 +25,6 @@ Put your data in two columns: (A=key B=value)
 
 ```
 http://example.com:4040/Sheet1/get
-
 
 {
    "key1":"value1",
