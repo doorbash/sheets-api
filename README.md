@@ -49,6 +49,8 @@ http://example.com:4040/Sheet1?key=key4
 true
 ```
 
+Set `CACHE_DATA` to `true` to increase performance.
+
 ## Example:
 
 ### Android:

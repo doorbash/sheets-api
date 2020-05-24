@@ -19,18 +19,23 @@ import (
 )
 
 const (
-	SPREADSHEET          = "PUT-YOUR-SPREADSHEET-ID-HERE"
-	CREDENTIALS_FILE     = "credentials.json"
-	tokFile              = "token.json"
-	refreshTokenInterval = 30 * 60 * time.Second
+	SPREADSHEET            = "PUT-YOUR-SPREADSHEET-ID-HERE"
+	CREDENTIALS_FILE       = "credentials.json"
+	TOKEN_FILE             = "token.json"
+	TOKEN_REFRESH_INTERVAL = 30 * 60 * time.Second
+	CACHE_DATA             = false
+	CACHE_INTERVAL         = 5 * 60 * time.Second
 )
+
+var configData map[string]map[string]interface{} = make(map[string]map[string]interface{})
+var lastConfigGetTime map[string]time.Time = make(map[string]time.Time)
 
 func main() {
 	go func() {
 		time.Sleep(60 * time.Second)
 		for {
 			refreshToken()
-			time.Sleep(refreshTokenInterval)
+			time.Sleep(TOKEN_REFRESH_INTERVAL)
 		}
 	}()
 	r := mux.NewRouter()
@@ -94,7 +99,7 @@ func callbackHandler(rw http.ResponseWriter, r *http.Request) {
 			return
 		}
 		//fmt.Printf("token is %v\n", tok)
-		saveToken(tokFile, tok)
+		saveToken(TOKEN_FILE, tok)
 		rw.WriteHeader(200)
 		rw.Write([]byte("You are logged in!"))
 	} else {
@@ -105,99 +110,99 @@ func callbackHandler(rw http.ResponseWriter, r *http.Request) {
 
 func sheetHandler(rw http.ResponseWriter, r *http.Request) {
 	var sheet = mux.Vars(r)["sheet"]
+	//var isCached bool = true
 
-	b, err := ioutil.ReadFile(CREDENTIALS_FILE)
-	if err != nil {
-		rw.WriteHeader(400)
-		rw.Write([]byte(fmt.Sprintf("Unable to read client secret file: %v", err)))
-		return
-	}
-
-	config, err := google.ConfigFromJSON(b, "https://www.googleapis.com/auth/spreadsheets.readonly")
-	if err != nil {
-		rw.WriteHeader(400)
-		rw.Write([]byte(fmt.Sprintf("Unable to parse client secret file to config: %v", err)))
-		return
-	}
-
-	tok, err := tokenFromFile(tokFile)
-	if err != nil {
-		rw.WriteHeader(400)
-		rw.Write([]byte(fmt.Sprintf("Error: %v", err)))
-		return
-	}
-	client := config.Client(context.Background(), tok)
-
-	srv, err := sheets.New(client)
-	if err != nil {
-		rw.WriteHeader(400)
-		rw.Write([]byte(fmt.Sprintf("Unable to retrieve Sheets client: %v", err)))
-		return
-	}
-
-	resp, err := srv.Spreadsheets.Values.Get(SPREADSHEET, sheet+"!A:B").Do()
-	if err != nil {
-		rw.WriteHeader(400)
-		rw.Write([]byte(fmt.Sprintf("Unable to retrieve data from sheet: %v", err)))
-		return
-	}
-
-	var s map[string]interface{} = make(map[string]interface{})
-
-	for _, row := range resp.Values {
-		// fmt.Printf("%s --> ", row[0])
-
-		if len(row) == 0 {
-			continue
+	if _, ok := lastConfigGetTime[sheet]; !CACHE_DATA || !ok || time.Now().Sub(lastConfigGetTime[sheet]) >= CACHE_INTERVAL {
+		b, err := ioutil.ReadFile(CREDENTIALS_FILE)
+		if err != nil {
+			rw.WriteHeader(400)
+			rw.Write([]byte(fmt.Sprintf("Unable to read client secret file: %v", err)))
+			return
 		}
 
-		var key string = row[0].(string)
-		var value string = ""
-
-		if len(row) > 1 {
-			value = row[1].(string)
+		config, err := google.ConfigFromJSON(b, "https://www.googleapis.com/auth/spreadsheets.readonly")
+		if err != nil {
+			rw.WriteHeader(400)
+			rw.Write([]byte(fmt.Sprintf("Unable to parse client secret file to config: %v", err)))
+			return
 		}
 
-		if value == "true" || value == "TRUE" {
-			s[key] = true
-		} else if value == "false" || value == "FALSE" {
-			s[key] = false
-		} else if value == "null" {
-			s[key] = nil
-		} else if i, err := strconv.ParseInt(value, 10, 64); err == nil {
-			s[key] = i
-		} else if f, err := strconv.ParseFloat(value, 64); err == nil {
-			s[key] = f
-		} else {
-			s[key] = value
-		}
-
-		// if len(row) > 1 {
-		// 	fmt.Printf("type of %v is %T\n\n", row[1].(string), s[key])
-		// } else {
-		// 	fmt.Printf("type of %v is %T\n\n", s[key], s[key])
-		// }
-
-	}
-
-	query := r.URL.Query()
-	if len(query) == 0 {
-		data, err := json.Marshal(s)
+		tok, err := tokenFromFile(TOKEN_FILE)
 		if err != nil {
 			rw.WriteHeader(400)
 			rw.Write([]byte(fmt.Sprintf("Error: %v", err)))
 			return
 		}
-		rw.Header().Set("Content-Type", "application/json")
-		rw.WriteHeader(200)
-		rw.Write(data)
+		client := config.Client(context.Background(), tok)
+
+		srv, err := sheets.New(client)
+		if err != nil {
+			rw.WriteHeader(400)
+			rw.Write([]byte(fmt.Sprintf("Unable to retrieve Sheets client: %v", err)))
+			return
+		}
+
+		resp, err := srv.Spreadsheets.Values.Get(SPREADSHEET, sheet+"!A:B").Do()
+		if err != nil {
+			rw.WriteHeader(400)
+			rw.Write([]byte(fmt.Sprintf("Unable to retrieve data from sheet: %v", err)))
+			return
+		}
+
+		configData[sheet] = make(map[string]interface{})
+
+		for _, row := range resp.Values {
+			// fmt.Printf("%s --> ", row[0])
+
+			if len(row) == 0 {
+				continue
+			}
+
+			var key string = row[0].(string)
+			var value string = ""
+
+			if len(row) > 1 {
+				value = row[1].(string)
+			}
+
+			if value == "true" || value == "TRUE" {
+				configData[sheet][key] = true
+			} else if value == "false" || value == "FALSE" {
+				configData[sheet][key] = false
+			} else if value == "null" {
+				configData[sheet][key] = nil
+			} else if i, err := strconv.ParseInt(value, 10, 64); err == nil {
+				configData[sheet][key] = i
+			} else if f, err := strconv.ParseFloat(value, 64); err == nil {
+				configData[sheet][key] = f
+			} else {
+				configData[sheet][key] = value
+			}
+		}
+		if CACHE_DATA {
+			lastConfigGetTime[sheet] = time.Now()
+		}
+		//isCached = false
+	}
+
+	query := r.URL.Query()
+	if len(query) == 0 {
+		data, err := json.Marshal(configData[sheet])
+		if err != nil {
+			rw.WriteHeader(400)
+			rw.Write([]byte(fmt.Sprintf("Error: %v", err)))
+		} else {
+			rw.Header().Set("Content-Type", "application/json")
+			rw.WriteHeader(200)
+			rw.Write(data)
+		}
 	} else {
 		if _, ok := query["key"]; ok {
-			if _, ok := s[query["key"][0]]; ok {
+			if _, ok := configData[sheet][query["key"][0]]; ok {
 				rw.WriteHeader(200)
-				rw.Write([]byte(fmt.Sprintf("%v", s[query["key"][0]])))
+				rw.Write([]byte(fmt.Sprintf("%v", configData[sheet][query["key"][0]])))
 			} else {
-				rw.WriteHeader(400)
+				rw.WriteHeader(404)
 				rw.Write([]byte(fmt.Sprintf("Error: key %s is not in sheet.", query["key"][0])))
 			}
 		} else {
@@ -206,6 +211,9 @@ func sheetHandler(rw http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if !CACHE_DATA {
+		delete(configData, sheet)
+	}
 }
 
 // Retrieves a token from a local file.
@@ -232,7 +240,7 @@ func saveToken(path string, token *oauth2.Token) {
 }
 
 func refreshToken() {
-	tok, err := tokenFromFile(tokFile)
+	tok, err := tokenFromFile(TOKEN_FILE)
 	if err != nil {
 		fmt.Printf("Error while renewing token %v\n", err)
 		return
@@ -248,8 +256,8 @@ func refreshToken() {
 		return
 	}
 
-	if tok.Expiry.Sub(time.Now()) < refreshTokenInterval+5*60*time.Second {
-		urlValue := url.Values{"client_id": {config.ClientID}, "client_secret": {config.ClientSecret}, "refresh_token": {tok.RefreshToken}, "grant_type": {"refresh_token"}}
+	if tok.Expiry.Sub(time.Now()) < TOKEN_REFRESH_INTERVAL+5*60*time.Second {
+		urlValue := url.Values{"client_id": {config.ClientID}, "client_secret": {config.ClientSecret}, "refreshToken": {tok.RefreshToken}, "grant_type": {"refreshToken"}}
 
 		resp, err := http.PostForm("https://www.googleapis.com/oauth2/v3/token", urlValue)
 		if err != nil {
@@ -264,21 +272,23 @@ func refreshToken() {
 			return
 		}
 		//fmt.Printf("body = %s\n", body)
-		var refresh_token map[string]interface{}
-		json.Unmarshal([]byte(body), &refresh_token)
+		var refreshToken map[string]interface{}
+		json.Unmarshal([]byte(body), &refreshToken)
 
-		// fmt.Printf("refresh_token = %+v\n", refresh_token)
+		// fmt.Printf("refreshToken = %+v\n", refreshToken)
 
 		then := time.Now()
-		then = then.Add(time.Duration(refresh_token["expires_in"].(float64)) * time.Second)
+		then = then.Add(time.Duration(refreshToken["expires_in"].(float64)) * time.Second)
 
 		tok.Expiry = then
-		tok.AccessToken = refresh_token["access_token"].(string)
-		saveToken(tokFile, tok)
+		tok.AccessToken = refreshToken["access_token"].(string)
+		saveToken(TOKEN_FILE, tok)
+
+		fmt.Printf("Access token refreshed\n")
 	} else {
 		fmt.Printf("No need to renew access token\n")
 		fmt.Printf("Access token expires in %v\n", tok.Expiry.Sub(time.Now()))
-		fmt.Printf("Next token refresh is in %v\n", refreshTokenInterval)
+		fmt.Printf("Next token refresh is in %v\n", TOKEN_REFRESH_INTERVAL)
 	}
 
 }
