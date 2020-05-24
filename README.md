@@ -1,5 +1,5 @@
 # remote-config
-A simple API that reads key value config from Google Sheets.
+A simple API that reads key value config from Google Sheets.Remote config does not cache retrieved data by default, set `CACHE_DATA` to `true` to increase performance.
 
 ## Install:
 
@@ -48,8 +48,6 @@ http://example.com:4040/Sheet1?key=key4
     
 true
 ```
-
-Set `CACHE_DATA` to `true` to increase performance.
 
 ## Example:
 
