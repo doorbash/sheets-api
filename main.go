@@ -225,7 +225,7 @@ func saveToken(path string, token *oauth2.Token) {
 	// fmt.Printf("Saving credential file to: %s\n", path)
 	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
-		log.Fatalf("Unable to cache oauth token: %v", err)
+		log.Fatalf("Unable to save oauth token: %v", err)
 	}
 	defer f.Close()
 	json.NewEncoder(f).Encode(token)
@@ -278,7 +278,7 @@ func refreshToken() {
 	} else {
 		fmt.Printf("No need to renew access token\n")
 		fmt.Printf("Access token expires in %v\n", tok.Expiry.Sub(time.Now()))
-		fmt.Printf("Access token refresh interval is %v\n", refreshTokenInterval)
+		fmt.Printf("Next token refresh is in %v\n", refreshTokenInterval)
 	}
 
 }
