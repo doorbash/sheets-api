@@ -57,7 +57,7 @@ true
 private class GetConfigAsyncTask extends AsyncTask<String, Integer, String> {
     protected String doInBackground(String... urls) {
         try {
-            Log.d(TAG, "sending get request to server...");
+            Log.d(TAG, "sending get request...");
             URL url = new URL(urls[0]);
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("GET");
@@ -84,8 +84,42 @@ private class GetConfigAsyncTask extends AsyncTask<String, Integer, String> {
 
     protected void onPostExecute(String result) {
         if (result != null) {
-            Log.d(TAG, "result is " + result);
-            // Do something with the result here
+            try {
+                Log.d(TAG, "result is " + result);
+                SharedPreferences.Editor editor = getApplicationContext()
+                        .getSharedPreferences("MyPref", 0).edit();
+                JSONObject jo = new JSONObject(result);
+                Iterator<String> it = jo.keys();
+                while (it.hasNext()) {
+                    String key = it.next();
+                    Object value = jo.get(key);
+                    if (value instanceof Boolean) {
+                        System.out.println(key + " = " + value + " is bool");
+                        editor.putBoolean(key, (boolean) value);
+                    } else if (value instanceof Integer) {
+                        System.out.println(key + " = " + value + " is integer");
+                        editor.putInt(key, (int) value);
+                    } else if (value instanceof Long) {
+                        System.out.println(key + " = " + value + " is long");
+                        editor.putLong(key, (long) value);
+                    } else if (value instanceof Float) {
+                        System.out.println(key + " = " + value + " is float");
+                        editor.putFloat(key, (float) value);
+                    } else if (value instanceof Double) {
+                        System.out.println(key + " = " + value + " is double");
+                        editor.putFloat(key, ((Double) value).floatValue());
+                    } else if (value instanceof String) {
+                        System.out.println(key + " = " + value + " is string");
+                        editor.putString(key, (String) value);
+                    } else if(value.equals(JSONObject.NULL)){
+                        System.out.println(key + " = " + value + " is null");
+                        editor.remove(key);
+                    }
+                }
+                editor.apply();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 }
