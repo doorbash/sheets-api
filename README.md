@@ -94,25 +94,18 @@ private class GetConfigAsyncTask extends AsyncTask<String, Integer, String> {
                     String key = it.next();
                     Object value = jo.get(key);
                     if (value instanceof Boolean) {
-                        System.out.println(key + " = " + value + " is bool");
                         editor.putBoolean(key, (boolean) value);
                     } else if (value instanceof Integer) {
-                        System.out.println(key + " = " + value + " is integer");
                         editor.putInt(key, (int) value);
                     } else if (value instanceof Long) {
-                        System.out.println(key + " = " + value + " is long");
                         editor.putLong(key, (long) value);
                     } else if (value instanceof Float) {
-                        System.out.println(key + " = " + value + " is float");
                         editor.putFloat(key, (float) value);
                     } else if (value instanceof Double) {
-                        System.out.println(key + " = " + value + " is double");
                         editor.putFloat(key, ((Double) value).floatValue());
                     } else if (value instanceof String) {
-                        System.out.println(key + " = " + value + " is string");
                         editor.putString(key, (String) value);
                     } else if(value.equals(JSONObject.NULL)){
-                        System.out.println(key + " = " + value + " is null");
                         editor.remove(key);
                     }
                 }
