@@ -248,7 +248,7 @@ func refreshToken() {
 		return
 	}
 
-	if tok.Expiry.Sub(time.Now()) < refreshTokenInterval-5*60*time.Second {
+	if tok.Expiry.Sub(time.Now()) < refreshTokenInterval+5*60*time.Second {
 		urlValue := url.Values{"client_id": {config.ClientID}, "client_secret": {config.ClientSecret}, "refresh_token": {tok.RefreshToken}, "grant_type": {"refresh_token"}}
 
 		resp, err := http.PostForm("https://www.googleapis.com/oauth2/v3/token", urlValue)
