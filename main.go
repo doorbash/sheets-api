@@ -276,7 +276,7 @@ func refreshToken() {
 		tok.AccessToken = refresh_token["access_token"].(string)
 		saveToken(tokFile, tok)
 	} else {
-		fmt.Printf("No need to renew new access token\n")
+		fmt.Printf("No need to renew access token\n")
 		fmt.Printf("Access token expires in %v\n", tok.Expiry.Sub(time.Now()))
 		fmt.Printf("Access token refresh interval is %v\n", refreshTokenInterval)
 	}
