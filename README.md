@@ -24,7 +24,7 @@ Put your data in two columns: (A=key, B=value)
 ### Get all configs as JSON
 
 ```
-http://example.com:4040/Sheet1/get
+http://example.com:4040/Sheet1
 
 {
    "key1":"value1",
@@ -44,7 +44,7 @@ http://example.com:4040/Sheet1/get
 ### Get a specific key
 
 ```
-http://example.com:4040/Sheet1/get?key=key4
+http://example.com:4040/Sheet1?key=key4
     
 true
 ```
@@ -92,7 +92,7 @@ private class GetConfigAsyncTask extends AsyncTask<String, Integer, String> {
 ```
 
 ```java
-new GetConfigAsyncTask().execute("http://example.com:4040/Sheet1/get");
+new GetConfigAsyncTask().execute("http://example.com:4040/Sheet1");
 ```
 
 ## License

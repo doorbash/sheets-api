@@ -37,7 +37,7 @@ func main() {
 	r.HandleFunc("/", homeHandler)
 	r.HandleFunc("/login", loginHandler)
 	r.HandleFunc("/callback", callbackHandler)
-	r.HandleFunc("/{sheet}/get", sheetHandler)
+	r.HandleFunc("/{sheet}", sheetHandler)
 	http.Handle("/", r)
 	err := http.ListenAndServe(":4040", nil)
 	if err != nil {
@@ -64,8 +64,7 @@ func loginHandler(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 	authURL := config.AuthCodeURL("state-token", oauth2.AccessTypeOffline, oauth2.SetAuthURLParam("approval_prompt", "force"))
-	fmt.Printf("auth url is %s\n", authURL)
-
+	//fmt.Printf("auth url is %s\n", authURL)
 	http.Redirect(rw, r, authURL, 301)
 }
 
@@ -94,7 +93,7 @@ func callbackHandler(rw http.ResponseWriter, r *http.Request) {
 			rw.Write([]byte(fmt.Sprintf("Unable to retrieve token from web: %v", err)))
 			return
 		}
-		fmt.Printf("token is %v\n", tok)
+		//fmt.Printf("token is %v\n", tok)
 		saveToken(tokFile, tok)
 		rw.WriteHeader(200)
 		rw.Write([]byte("You are logged in!"))
