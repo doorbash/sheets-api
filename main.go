@@ -257,7 +257,7 @@ func refreshToken() {
 	}
 
 	if tok.Expiry.Sub(time.Now()) < TOKEN_REFRESH_INTERVAL+5*60*time.Second {
-		urlValue := url.Values{"client_id": {config.ClientID}, "client_secret": {config.ClientSecret}, "refreshToken": {tok.RefreshToken}, "grant_type": {"refreshToken"}}
+		urlValue := url.Values{"client_id": {config.ClientID}, "client_secret": {config.ClientSecret}, "refresh_token": {tok.RefreshToken}, "grant_type": {"refresh_token"}}
 
 		resp, err := http.PostForm("https://www.googleapis.com/oauth2/v3/token", urlValue)
 		if err != nil {
@@ -271,7 +271,7 @@ func refreshToken() {
 			fmt.Printf("Error while renewing token %v\n", err)
 			return
 		}
-		//fmt.Printf("body = %s\n", body)
+		// fmt.Printf("body = %s\n", body)
 		var refreshToken map[string]interface{}
 		json.Unmarshal([]byte(body), &refreshToken)
 
