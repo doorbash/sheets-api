@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -29,6 +30,8 @@ const (
 
 var configData map[string]map[string]interface{} = make(map[string]map[string]interface{})
 var lastConfigGetTime map[string]time.Time = make(map[string]time.Time)
+var cdMux sync.Mutex
+var isWritingCache bool
 
 func main() {
 	go func() {
@@ -111,8 +114,16 @@ func callbackHandler(rw http.ResponseWriter, r *http.Request) {
 func sheetHandler(rw http.ResponseWriter, r *http.Request) {
 	var sheet = mux.Vars(r)["sheet"]
 	//var isCached bool = true
-
-	if _, ok := lastConfigGetTime[sheet]; !CACHE_DATA || !ok || time.Now().Sub(lastConfigGetTime[sheet]) >= CACHE_INTERVAL {
+	wc := isWritingCache
+	if wc {
+		cdMux.Lock()
+	}
+	_, ok := lastConfigGetTime[sheet]
+	cacheIsExpired := time.Now().Sub(lastConfigGetTime[sheet]) >= CACHE_INTERVAL
+	if wc {
+		cdMux.Unlock()
+	}
+	if !ok || cacheIsExpired {
 		b, err := ioutil.ReadFile(CREDENTIALS_FILE)
 		if err != nil {
 			rw.WriteHeader(400)
@@ -149,6 +160,8 @@ func sheetHandler(rw http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		cdMux.Lock()
+		isWritingCache = true
 		configData[sheet] = make(map[string]interface{})
 
 		for _, row := range resp.Values {
@@ -182,9 +195,14 @@ func sheetHandler(rw http.ResponseWriter, r *http.Request) {
 		if CACHE_DATA {
 			lastConfigGetTime[sheet] = time.Now()
 		}
+		isWritingCache = false
+		cdMux.Unlock()
 		//isCached = false
 	}
-
+	wc = isWritingCache
+	if wc {
+		cdMux.Lock()
+	}
 	query := r.URL.Query()
 	if len(query) == 0 {
 		data, err := json.Marshal(configData[sheet])
@@ -210,9 +228,15 @@ func sheetHandler(rw http.ResponseWriter, r *http.Request) {
 			rw.Write([]byte("Error: key param is not in url."))
 		}
 	}
-
+	if wc {
+		cdMux.Unlock()
+	}
 	if !CACHE_DATA {
+		cdMux.Lock()
+		isWritingCache = true
 		delete(configData, sheet)
+		isWritingCache = false
+		cdMux.Unlock()
 	}
 }
 
