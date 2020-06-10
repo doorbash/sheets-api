@@ -30,8 +30,7 @@ const (
 
 var configData map[string]map[string]interface{} = make(map[string]map[string]interface{})
 var lastConfigGetTime map[string]time.Time = make(map[string]time.Time)
-var cdMux sync.Mutex
-var isWritingCache bool
+var cdMux sync.RWMutex
 
 func main() {
 	go func() {
@@ -114,15 +113,10 @@ func callbackHandler(rw http.ResponseWriter, r *http.Request) {
 func sheetHandler(rw http.ResponseWriter, r *http.Request) {
 	var sheet = mux.Vars(r)["sheet"]
 	var configDataSheet map[string]interface{}
-	var wc bool
-	if wc = isWritingCache; wc {
-		cdMux.Lock()
-	}
+	cdMux.RLock()
 	_, ok := lastConfigGetTime[sheet]
 	cacheIsExpired := time.Now().Sub(lastConfigGetTime[sheet]) >= CACHE_INTERVAL
-	if wc {
-		cdMux.Unlock()
-	}
+	cdMux.RUnlock()
 	if !CACHE_DATA || !ok || cacheIsExpired {
 		b, err := ioutil.ReadFile(CREDENTIALS_FILE)
 		if err != nil {
@@ -190,21 +184,15 @@ func sheetHandler(rw http.ResponseWriter, r *http.Request) {
 		}
 		if CACHE_DATA {
 			cdMux.Lock()
-			isWritingCache = true
 			configData[sheet] = configDataSheet
 			lastConfigGetTime[sheet] = time.Now()
-			isWritingCache = false
 			cdMux.Unlock()
 		}
 	}
 	if configDataSheet == nil {
-		if wc = isWritingCache; wc {
-			cdMux.Lock()
-		}
+		cdMux.RLock()
 		configDataSheet = configData[sheet]
-		if wc {
-			cdMux.Unlock()
-		}
+		cdMux.RUnlock()
 	}
 	query := r.URL.Query()
 	if len(query) == 0 {
