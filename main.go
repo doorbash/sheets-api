@@ -113,9 +113,9 @@ func callbackHandler(rw http.ResponseWriter, r *http.Request) {
 
 func sheetHandler(rw http.ResponseWriter, r *http.Request) {
 	var sheet = mux.Vars(r)["sheet"]
-	//var isCached bool = true
-	wc := isWritingCache
-	if wc {
+	var configDataSheet map[string]interface{}
+	var wc bool
+	if wc = isWritingCache; wc {
 		cdMux.Lock()
 	}
 	_, ok := lastConfigGetTime[sheet]
@@ -123,7 +123,7 @@ func sheetHandler(rw http.ResponseWriter, r *http.Request) {
 	if wc {
 		cdMux.Unlock()
 	}
-	if !ok || cacheIsExpired {
+	if !CACHE_DATA || !ok || cacheIsExpired {
 		b, err := ioutil.ReadFile(CREDENTIALS_FILE)
 		if err != nil {
 			rw.WriteHeader(400)
@@ -159,11 +159,7 @@ func sheetHandler(rw http.ResponseWriter, r *http.Request) {
 			rw.Write([]byte(fmt.Sprintf("Unable to retrieve data from sheet: %v", err)))
 			return
 		}
-
-		cdMux.Lock()
-		isWritingCache = true
-		configData[sheet] = make(map[string]interface{})
-
+		configDataSheet = make(map[string]interface{})
 		for _, row := range resp.Values {
 			// fmt.Printf("%s --> ", row[0])
 
@@ -179,33 +175,40 @@ func sheetHandler(rw http.ResponseWriter, r *http.Request) {
 			}
 
 			if value == "true" || value == "TRUE" {
-				configData[sheet][key] = true
+				configDataSheet[key] = true
 			} else if value == "false" || value == "FALSE" {
-				configData[sheet][key] = false
+				configDataSheet[key] = false
 			} else if value == "null" {
-				configData[sheet][key] = nil
+				configDataSheet[key] = nil
 			} else if i, err := strconv.ParseInt(value, 10, 64); err == nil {
-				configData[sheet][key] = i
+				configDataSheet[key] = i
 			} else if f, err := strconv.ParseFloat(value, 64); err == nil {
-				configData[sheet][key] = f
+				configDataSheet[key] = f
 			} else {
-				configData[sheet][key] = value
+				configDataSheet[key] = value
 			}
 		}
 		if CACHE_DATA {
+			cdMux.Lock()
+			isWritingCache = true
+			configData[sheet] = configDataSheet
 			lastConfigGetTime[sheet] = time.Now()
+			isWritingCache = false
+			cdMux.Unlock()
 		}
-		isWritingCache = false
-		cdMux.Unlock()
-		//isCached = false
 	}
-	wc = isWritingCache
-	if wc {
-		cdMux.Lock()
+	if configDataSheet == nil {
+		if wc = isWritingCache; wc {
+			cdMux.Lock()
+		}
+		configDataSheet = configData[sheet]
+		if wc {
+			cdMux.Unlock()
+		}
 	}
 	query := r.URL.Query()
 	if len(query) == 0 {
-		data, err := json.Marshal(configData[sheet])
+		data, err := json.Marshal(configDataSheet)
 		if err != nil {
 			rw.WriteHeader(400)
 			rw.Write([]byte(fmt.Sprintf("Error: %v", err)))
@@ -216,9 +219,9 @@ func sheetHandler(rw http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		if _, ok := query["key"]; ok {
-			if _, ok := configData[sheet][query["key"][0]]; ok {
+			if _, ok := configDataSheet[query["key"][0]]; ok {
 				rw.WriteHeader(200)
-				rw.Write([]byte(fmt.Sprintf("%v", configData[sheet][query["key"][0]])))
+				rw.Write([]byte(fmt.Sprintf("%v", configDataSheet[query["key"][0]])))
 			} else {
 				rw.WriteHeader(404)
 				rw.Write([]byte(fmt.Sprintf("Error: key %s is not in sheet.", query["key"][0])))
@@ -227,16 +230,6 @@ func sheetHandler(rw http.ResponseWriter, r *http.Request) {
 			rw.WriteHeader(400)
 			rw.Write([]byte("Error: key param is not in url."))
 		}
-	}
-	if wc {
-		cdMux.Unlock()
-	}
-	if !CACHE_DATA {
-		cdMux.Lock()
-		isWritingCache = true
-		delete(configData, sheet)
-		isWritingCache = false
-		cdMux.Unlock()
 	}
 }
 
