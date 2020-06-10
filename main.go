@@ -113,11 +113,14 @@ func callbackHandler(rw http.ResponseWriter, r *http.Request) {
 func sheetHandler(rw http.ResponseWriter, r *http.Request) {
 	var sheet = mux.Vars(r)["sheet"]
 	var configDataSheet map[string]interface{}
-	cdMux.RLock()
-	_, ok := lastConfigGetTime[sheet]
-	cacheIsExpired := time.Now().Sub(lastConfigGetTime[sheet]) >= CACHE_INTERVAL
-	cdMux.RUnlock()
-	if !CACHE_DATA || !ok || cacheIsExpired {
+	var cacheIsExpired bool
+	if CACHE_DATA {
+		cdMux.RLock()
+		_, ok := lastConfigGetTime[sheet]
+		cacheIsExpired = ok && time.Now().Sub(lastConfigGetTime[sheet]) >= CACHE_INTERVAL
+		cdMux.RUnlock()
+	}
+	if !CACHE_DATA || cacheIsExpired {
 		b, err := ioutil.ReadFile(CREDENTIALS_FILE)
 		if err != nil {
 			rw.WriteHeader(400)
