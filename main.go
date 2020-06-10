@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -29,6 +30,7 @@ const (
 
 var configData map[string]map[string]interface{} = make(map[string]map[string]interface{})
 var lastConfigGetTime map[string]time.Time = make(map[string]time.Time)
+var cdMux sync.RWMutex
 
 func main() {
 	go func() {
@@ -110,9 +112,15 @@ func callbackHandler(rw http.ResponseWriter, r *http.Request) {
 
 func sheetHandler(rw http.ResponseWriter, r *http.Request) {
 	var sheet = mux.Vars(r)["sheet"]
-	//var isCached bool = true
-
-	if _, ok := lastConfigGetTime[sheet]; !CACHE_DATA || !ok || time.Now().Sub(lastConfigGetTime[sheet]) >= CACHE_INTERVAL {
+	var configDataSheet map[string]interface{}
+	var cacheIsExpired bool
+	if CACHE_DATA {
+		cdMux.RLock()
+		_, ok := lastConfigGetTime[sheet]
+		cacheIsExpired = ok && time.Now().Sub(lastConfigGetTime[sheet]) >= CACHE_INTERVAL
+		cdMux.RUnlock()
+	}
+	if !CACHE_DATA || cacheIsExpired {
 		b, err := ioutil.ReadFile(CREDENTIALS_FILE)
 		if err != nil {
 			rw.WriteHeader(400)
@@ -148,9 +156,7 @@ func sheetHandler(rw http.ResponseWriter, r *http.Request) {
 			rw.Write([]byte(fmt.Sprintf("Unable to retrieve data from sheet: %v", err)))
 			return
 		}
-
-		configData[sheet] = make(map[string]interface{})
-
+		configDataSheet = make(map[string]interface{})
 		for _, row := range resp.Values {
 			// fmt.Printf("%s --> ", row[0])
 
@@ -166,28 +172,34 @@ func sheetHandler(rw http.ResponseWriter, r *http.Request) {
 			}
 
 			if value == "true" || value == "TRUE" {
-				configData[sheet][key] = true
+				configDataSheet[key] = true
 			} else if value == "false" || value == "FALSE" {
-				configData[sheet][key] = false
+				configDataSheet[key] = false
 			} else if value == "null" {
-				configData[sheet][key] = nil
+				configDataSheet[key] = nil
 			} else if i, err := strconv.ParseInt(value, 10, 64); err == nil {
-				configData[sheet][key] = i
+				configDataSheet[key] = i
 			} else if f, err := strconv.ParseFloat(value, 64); err == nil {
-				configData[sheet][key] = f
+				configDataSheet[key] = f
 			} else {
-				configData[sheet][key] = value
+				configDataSheet[key] = value
 			}
 		}
 		if CACHE_DATA {
+			cdMux.Lock()
+			configData[sheet] = configDataSheet
 			lastConfigGetTime[sheet] = time.Now()
+			cdMux.Unlock()
 		}
-		//isCached = false
 	}
-
+	if configDataSheet == nil {
+		cdMux.RLock()
+		configDataSheet = configData[sheet]
+		cdMux.RUnlock()
+	}
 	query := r.URL.Query()
 	if len(query) == 0 {
-		data, err := json.Marshal(configData[sheet])
+		data, err := json.Marshal(configDataSheet)
 		if err != nil {
 			rw.WriteHeader(400)
 			rw.Write([]byte(fmt.Sprintf("Error: %v", err)))
@@ -198,9 +210,9 @@ func sheetHandler(rw http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		if _, ok := query["key"]; ok {
-			if _, ok := configData[sheet][query["key"][0]]; ok {
+			if _, ok := configDataSheet[query["key"][0]]; ok {
 				rw.WriteHeader(200)
-				rw.Write([]byte(fmt.Sprintf("%v", configData[sheet][query["key"][0]])))
+				rw.Write([]byte(fmt.Sprintf("%v", configDataSheet[query["key"][0]])))
 			} else {
 				rw.WriteHeader(404)
 				rw.Write([]byte(fmt.Sprintf("Error: key %s is not in sheet.", query["key"][0])))
@@ -209,10 +221,6 @@ func sheetHandler(rw http.ResponseWriter, r *http.Request) {
 			rw.WriteHeader(400)
 			rw.Write([]byte("Error: key param is not in url."))
 		}
-	}
-
-	if !CACHE_DATA {
-		delete(configData, sheet)
 	}
 }
 
