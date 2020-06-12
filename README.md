@@ -49,6 +49,31 @@ http://example.com:4040/Sheet1?key=key4
 true
 ```
 
+### Metrics for Prometheus
+
+```
+http://example.com:4040/Sheet1/metrics
+    
+# HELP remote_config_data remote config data
+# TYPE remote_config_data gauge
+remote_config_data{key=key11} 0
+# HELP remote_config_data remote config data
+# TYPE remote_config_data gauge
+remote_config_data{key=key2} 3.14
+# HELP remote_config_data remote config data
+# TYPE remote_config_data gauge
+remote_config_data{key=key3} 4
+# HELP remote_config_data remote config data
+# TYPE remote_config_data gauge
+remote_config_data{key=key6} 1
+# HELP remote_config_data remote config data
+# TYPE remote_config_data gauge
+remote_config_data{key=key4} 1
+# HELP remote_config_data remote config data
+# TYPE remote_config_data gauge
+remote_config_data{key=key5} 0
+```
+
 ## Example:
 
 ### Android:
