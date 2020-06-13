@@ -45,7 +45,7 @@ http://example.com:4040/Sheet1
 
 ```
 http://example.com:4040/Sheet1?key=key4
-    
+
 true
 ```
 
@@ -53,7 +53,7 @@ true
 
 ```
 http://example.com:4040/Sheet1/metrics
-    
+
 remote_config{key="key2"} 3.14
 remote_config{key="key3"} 4
 remote_config{key="key5"} 0
