@@ -41,9 +41,9 @@ func main() {
 		}
 	}()
 	r := mux.NewRouter()
-	r.HandleFunc("/", homeHandler)
-	r.HandleFunc("/login", loginHandler)
-	r.HandleFunc("/callback", callbackHandler)
+	r.HandleFunc("/", home)
+	r.HandleFunc("/login", login)
+	r.HandleFunc("/callback", callback)
 	r.HandleFunc("/{sheet}", sheet)
 	r.HandleFunc("/{sheet}/metrics", sheetMetrics)
 	http.Handle("/", r)
@@ -53,12 +53,12 @@ func main() {
 	}
 }
 
-func homeHandler(rw http.ResponseWriter, r *http.Request) {
+func home(rw http.ResponseWriter, r *http.Request) {
 	rw.WriteHeader(200)
 	rw.Write([]byte("It's working!"))
 }
 
-func loginHandler(rw http.ResponseWriter, r *http.Request) {
+func login(rw http.ResponseWriter, r *http.Request) {
 	b, err := ioutil.ReadFile(CREDENTIALS_FILE)
 	if err != nil {
 		rw.WriteHeader(400)
@@ -76,7 +76,7 @@ func loginHandler(rw http.ResponseWriter, r *http.Request) {
 	http.Redirect(rw, r, authURL, 301)
 }
 
-func callbackHandler(rw http.ResponseWriter, r *http.Request) {
+func callback(rw http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 	if _, ok := query["code"]; ok {
 		authCode := query["code"][0]
@@ -140,7 +140,7 @@ func sheetMetrics(rw http.ResponseWriter, r *http.Request) {
 		rw.WriteHeader(200)
 		configDataSheet := data.(map[string]interface{})
 		for i, j := range configDataSheet {
-			var d interface{}
+			var value interface{}
 			switch j.(type) {
 			case string:
 				continue
@@ -148,14 +148,14 @@ func sheetMetrics(rw http.ResponseWriter, r *http.Request) {
 				continue
 			case bool:
 				if j.(bool) {
-					d = 1
+					value = 1
 				} else {
-					d = 0
+					value = 0
 				}
 			default:
-				d = j
+				value = j
 			}
-			fmt.Fprintf(rw, "# HELP remote_config_data remote config data\n# TYPE remote_config_data gauge\nremote_config_data{key=\"%v\"} %v\n", i, d)
+			fmt.Fprintf(rw, "# HELP remote_config_data remote config data\n# TYPE remote_config_data gauge\nremote_config_data{key=\"%v\"} %v\n", i, value)
 		}
 		return
 	}
