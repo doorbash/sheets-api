@@ -45,6 +45,7 @@ func main() {
 	r.HandleFunc("/login", login)
 	r.HandleFunc("/callback", callback)
 	r.HandleFunc("/{sheet}", sheet)
+	r.HandleFunc("/{sheet}/", sheet)
 	r.HandleFunc("/{sheet}/metrics", sheetMetrics)
 	http.Handle("/", r)
 	err := http.ListenAndServe(":4040", nil)
@@ -169,34 +170,34 @@ func handleSheet(sheet string, query url.Values) (int, interface{}) {
 	if CACHE_DATA {
 		cdMux.RLock()
 		_, ok := lastConfigGetTime[sheet]
-		cacheIsExpired = ok && time.Now().Sub(lastConfigGetTime[sheet]) >= CACHE_INTERVAL
+		cacheIsExpired = !ok || time.Now().Sub(lastConfigGetTime[sheet]) >= CACHE_INTERVAL
 		cdMux.RUnlock()
 	}
 	if !CACHE_DATA || cacheIsExpired {
 		b, err := ioutil.ReadFile(CREDENTIALS_FILE)
 		if err != nil {
-			return 400, []byte(fmt.Sprintf("Unable to read client secret file: %v", err))
+			return 400, fmt.Sprintf("Unable to read client secret file: %v", err)
 		}
 
 		config, err := google.ConfigFromJSON(b, "https://www.googleapis.com/auth/spreadsheets.readonly")
 		if err != nil {
-			return 400, []byte(fmt.Sprintf("Unable to parse client secret file to config: %v", err))
+			return 400, fmt.Sprintf("Unable to parse client secret file to config: %v", err)
 		}
 
 		tok, err := tokenFromFile(TOKEN_FILE)
 		if err != nil {
-			return 400, []byte(fmt.Sprintf("Error: %v", err))
+			return 400, fmt.Sprintf("Error: %v", err)
 		}
 		client := config.Client(context.Background(), tok)
 
 		srv, err := sheets.New(client)
 		if err != nil {
-			return 400, []byte(fmt.Sprintf("Unable to retrieve Sheets client: %v", err))
+			return 400, fmt.Sprintf("Unable to retrieve Sheets client: %v", err)
 		}
 
 		resp, err := srv.Spreadsheets.Values.Get(SPREADSHEET, sheet+"!A:B").Do()
 		if err != nil {
-			return 400, []byte(fmt.Sprintf("Unable to retrieve data from sheet: %v", err))
+			return 400, fmt.Sprintf("Unable to retrieve data from sheet: %v", err)
 		}
 		configDataSheet = make(map[string]interface{})
 		for _, row := range resp.Values {
@@ -246,9 +247,9 @@ func handleSheet(sheet string, query url.Values) (int, interface{}) {
 		if _, ok := configDataSheet[query["key"][0]]; ok {
 			return 200, configDataSheet[query["key"][0]]
 		}
-		return 404, []byte(fmt.Sprintf("Error: key %s is not in sheet.", query["key"][0]))
+		return 404, fmt.Sprintf("Error: key %s is not in sheet.", query["key"][0])
 	}
-	return 400, []byte("Error: key param is not in url.")
+	return 400, "Error: key param is not in url."
 }
 
 // Retrieves a token from a local file.
