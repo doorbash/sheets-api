@@ -49,7 +49,7 @@ http://example.com:4040/Sheet1?key=key4
 true
 ```
 
-### Metrics for Prometheus
+### Get metrics for Prometheus
 
 ```
 http://example.com:4040/Sheet1/metrics
