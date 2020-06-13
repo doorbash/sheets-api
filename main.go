@@ -44,7 +44,8 @@ func main() {
 	r.HandleFunc("/", homeHandler)
 	r.HandleFunc("/login", loginHandler)
 	r.HandleFunc("/callback", callbackHandler)
-	r.HandleFunc("/{sheet}", sheetHandler)
+	r.HandleFunc("/{sheet}", sheet)
+	r.HandleFunc("/{sheet}/metrics", sheetMetrics)
 	http.Handle("/", r)
 	err := http.ListenAndServe(":4040", nil)
 	if err != nil {
@@ -110,8 +111,59 @@ func callbackHandler(rw http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func sheetHandler(rw http.ResponseWriter, r *http.Request) {
+func sheet(rw http.ResponseWriter, r *http.Request) {
 	var sheet = mux.Vars(r)["sheet"]
+	code, data := handleSheet(sheet, r.URL.Query())
+	if code == 200 {
+		switch data.(type) {
+		case map[string]interface{}:
+			j, err := json.Marshal(data)
+			if err != nil {
+				rw.WriteHeader(400)
+				rw.Write([]byte(fmt.Sprintf("error: %v", err)))
+				return
+			}
+			rw.Header().Set("Content-Type", "application/json")
+			rw.WriteHeader(code)
+			rw.Write(j)
+			return
+		}
+	}
+	rw.WriteHeader(code)
+	rw.Write([]byte(fmt.Sprintf("%v", data)))
+}
+
+func sheetMetrics(rw http.ResponseWriter, r *http.Request) {
+	var sheet = mux.Vars(r)["sheet"]
+	code, data := handleSheet(sheet, url.Values{})
+	if code == 200 {
+		rw.WriteHeader(200)
+		configDataSheet := data.(map[string]interface{})
+		for i, j := range configDataSheet {
+			var d interface{}
+			switch j.(type) {
+			case string:
+				continue
+			case nil:
+				continue
+			case bool:
+				if j.(bool) {
+					d = 1
+				} else {
+					d = 0
+				}
+			default:
+				d = j
+			}
+			fmt.Fprintf(rw, "# HELP remote_config_data remote config data\n# TYPE remote_config_data gauge\nremote_config_data{key=\"%v\"} %v\n", i, d)
+		}
+		return
+	}
+	rw.WriteHeader(code)
+	rw.Write([]byte(fmt.Sprintf("%v", data)))
+}
+
+func handleSheet(sheet string, query url.Values) (int, interface{}) {
 	var configDataSheet map[string]interface{}
 	var cacheIsExpired bool
 	if CACHE_DATA {
@@ -123,38 +175,28 @@ func sheetHandler(rw http.ResponseWriter, r *http.Request) {
 	if !CACHE_DATA || cacheIsExpired {
 		b, err := ioutil.ReadFile(CREDENTIALS_FILE)
 		if err != nil {
-			rw.WriteHeader(400)
-			rw.Write([]byte(fmt.Sprintf("Unable to read client secret file: %v", err)))
-			return
+			return 400, []byte(fmt.Sprintf("Unable to read client secret file: %v", err))
 		}
 
 		config, err := google.ConfigFromJSON(b, "https://www.googleapis.com/auth/spreadsheets.readonly")
 		if err != nil {
-			rw.WriteHeader(400)
-			rw.Write([]byte(fmt.Sprintf("Unable to parse client secret file to config: %v", err)))
-			return
+			return 400, []byte(fmt.Sprintf("Unable to parse client secret file to config: %v", err))
 		}
 
 		tok, err := tokenFromFile(TOKEN_FILE)
 		if err != nil {
-			rw.WriteHeader(400)
-			rw.Write([]byte(fmt.Sprintf("Error: %v", err)))
-			return
+			return 400, []byte(fmt.Sprintf("Error: %v", err))
 		}
 		client := config.Client(context.Background(), tok)
 
 		srv, err := sheets.New(client)
 		if err != nil {
-			rw.WriteHeader(400)
-			rw.Write([]byte(fmt.Sprintf("Unable to retrieve Sheets client: %v", err)))
-			return
+			return 400, []byte(fmt.Sprintf("Unable to retrieve Sheets client: %v", err))
 		}
 
 		resp, err := srv.Spreadsheets.Values.Get(SPREADSHEET, sheet+"!A:B").Do()
 		if err != nil {
-			rw.WriteHeader(400)
-			rw.Write([]byte(fmt.Sprintf("Unable to retrieve data from sheet: %v", err)))
-			return
+			return 400, []byte(fmt.Sprintf("Unable to retrieve data from sheet: %v", err))
 		}
 		configDataSheet = make(map[string]interface{})
 		for _, row := range resp.Values {
@@ -197,31 +239,16 @@ func sheetHandler(rw http.ResponseWriter, r *http.Request) {
 		configDataSheet = configData[sheet]
 		cdMux.RUnlock()
 	}
-	query := r.URL.Query()
 	if len(query) == 0 {
-		data, err := json.Marshal(configDataSheet)
-		if err != nil {
-			rw.WriteHeader(400)
-			rw.Write([]byte(fmt.Sprintf("Error: %v", err)))
-		} else {
-			rw.Header().Set("Content-Type", "application/json")
-			rw.WriteHeader(200)
-			rw.Write(data)
-		}
-	} else {
-		if _, ok := query["key"]; ok {
-			if _, ok := configDataSheet[query["key"][0]]; ok {
-				rw.WriteHeader(200)
-				rw.Write([]byte(fmt.Sprintf("%v", configDataSheet[query["key"][0]])))
-			} else {
-				rw.WriteHeader(404)
-				rw.Write([]byte(fmt.Sprintf("Error: key %s is not in sheet.", query["key"][0])))
-			}
-		} else {
-			rw.WriteHeader(400)
-			rw.Write([]byte("Error: key param is not in url."))
-		}
+		return 200, configDataSheet
 	}
+	if _, ok := query["key"]; ok {
+		if _, ok := configDataSheet[query["key"][0]]; ok {
+			return 200, configDataSheet[query["key"][0]]
+		}
+		return 404, []byte(fmt.Sprintf("Error: key %s is not in sheet.", query["key"][0]))
+	}
+	return 400, []byte("Error: key param is not in url.")
 }
 
 // Retrieves a token from a local file.
