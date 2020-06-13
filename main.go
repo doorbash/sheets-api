@@ -156,7 +156,7 @@ func sheetMetrics(rw http.ResponseWriter, r *http.Request) {
 			default:
 				value = j
 			}
-			fmt.Fprintf(rw, "remote_config_data{key=\"%v\"} %v\n", i, value)
+			fmt.Fprintf(rw, "remote_config{key=\"%v\"} %v\n", i, value)
 		}
 		return
 	}

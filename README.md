@@ -54,12 +54,12 @@ true
 ```
 http://example.com:4040/Sheet1/metrics
     
-remote_config_data{key="key2"} 3.14
-remote_config_data{key="key3"} 4
-remote_config_data{key="key5"} 0
-remote_config_data{key="key11"} 0
-remote_config_data{key="key4"} 1
-remote_config_data{key="key6"} 1
+remote_config{key="key2"} 3.14
+remote_config{key="key3"} 4
+remote_config{key="key5"} 0
+remote_config{key="key11"} 0
+remote_config{key="key4"} 1
+remote_config{key="key6"} 1
 ```
 
 ## Example:
